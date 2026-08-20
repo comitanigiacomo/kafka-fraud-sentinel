@@ -1,23 +1,40 @@
 #!/bin/bash
 cd /work
+
 openssl req -new -x509 -keyout ca.key -out ca.crt -days 365 -passout pass:sentinel -subj "/C=IT/O=KafkaSentinel/CN=SentinelCA"
 
-openssl pkcs12 -export -in ca.crt -nokeys -out truststore.p12 -passout pass:sentinel
-echo "sentinel" > truststore.password
+keytool -importcert -trustcacerts -alias ca -file ca.crt -keystore truststore.p12 -storepass sentinel -noprompt -storetype PKCS12
+echo -n "sentinel" > truststore.password
 
-for i in broker-1 broker-2 broker-3 client; do
-  mkdir -p ${i}-creds
-  openssl genrsa -out ${i}-creds/${i}.key 2048
-  openssl req -new -key ${i}-creds/${i}.key -out ${i}-creds/${i}.csr -subj "/C=IT/O=KafkaSentinel/CN=${i}"
-  openssl x509 -req -in ${i}-creds/${i}.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out ${i}-creds/${i}.crt -days 365 -passin pass:sentinel
+NODES=(
+  "kafka-1 broker-1"
+  "kafka-2 broker-2"
+  "kafka-3 broker-3"
+  "client client"
+)
+
+for NODE in "${NODES[@]}"; do
+  set -- $NODE
+  DNS=$1
+  PREFIX=$2
+  DIR="${PREFIX}-creds"
   
-  openssl pkcs12 -export -in ${i}-creds/${i}.crt -inkey ${i}-creds/${i}.key -out ${i}-creds/${i}.keystore.p12 -name ${i} -passout pass:sentinel
+  mkdir -p ${DIR}
   
-  echo "sentinel" > ${i}-creds/${i}.keystore.password
+  openssl genrsa -out ${DIR}/${PREFIX}.key 2048
+  openssl req -new -key ${DIR}/${PREFIX}.key -out ${DIR}/${PREFIX}.csr -subj "/C=IT/O=KafkaSentinel/CN=${DNS}"
   
-  cp truststore.p12 ${i}-creds/
-  cp truststore.password ${i}-creds/
+  echo "subjectAltName=DNS:${DNS},DNS:localhost,IP:127.0.0.1" > ${DIR}/extfile.cnf
+  
+  openssl x509 -req -in ${DIR}/${PREFIX}.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out ${DIR}/${PREFIX}.crt -days 365 -passin pass:sentinel -extfile ${DIR}/extfile.cnf
+  
+  openssl pkcs12 -export -in ${DIR}/${PREFIX}.crt -inkey ${DIR}/${PREFIX}.key -certfile ca.crt -out ${DIR}/${PREFIX}.keystore.p12 -name ${PREFIX} -passout pass:sentinel
+  
+  echo -n "sentinel" > ${DIR}/${PREFIX}.keystore.password
+  cp truststore.p12 ${DIR}/
+  cp truststore.password ${DIR}/
+  
+  echo "Completato ${DNS}"
 done
 
-rm *.csr *.srl 2>/dev/null || true
-echo "Certificati pronti."
+rm *.csr *.srl */*.cnf 2>/dev/null || true
