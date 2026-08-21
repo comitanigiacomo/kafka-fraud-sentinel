@@ -216,3 +216,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+security/*.jks
+security/*.pem
+security/*.csr
+security/*.crt
+security/*-creds/
