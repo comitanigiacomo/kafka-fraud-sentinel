@@ -13,9 +13,9 @@ load_dotenv(os.path.join(basedir, '../../.env'))
 # Callback di Kafka: stampa se il messaggio è arrivato a destinazione o se c'è un errore
 def delivery_report(err, msg):
     if err is not None:
-        print(f"[-] Errore di invio transazione: {err}")
+        print(f"Errore di invio transazione: {err}")
     else:
-        print(f"[x] Transazione inoltrata -> Topic: {msg.topic()} | Partizione: {msg.partition()} | Offset: {msg.offset()}")
+        print(f"Transazione inoltrata -> Topic: {msg.topic()} | Partizione: {msg.partition()} | Offset: {msg.offset()}")
 
 # Configura il producer con SASL_SSL e la CA per connettermi al cluster sicuro
 def get_kafka_config():
@@ -48,12 +48,12 @@ def generate_mock_transaction():
     return transaction
 
 def main():
-    print("[*] Avvio del servizio Producer (Simulatore Transazioni)...")
+    print("Avvio del servizio Producer (Simulatore Transazioni)...")
     
     try:
         producer = Producer(get_kafka_config())
     except Exception as e:
-        print(f"[-] Errore critico di connessione al cluster Kafka: {e}")
+        print(f"Errore critico di connessione al cluster Kafka: {e}")
         return
 
     topic_name = "test-transazioni"
@@ -67,7 +67,7 @@ def main():
             try:
                 payload = json.dumps(tx)
             except (TypeError, ValueError) as serialization_err:
-                print(f"[-] Errore di serializzazione JSON: {serialization_err}")
+                print(f"Errore di serializzazione JSON: {serialization_err}")
                 continue
             
             # Uso user_id così le transazioni dello stesso utente 
