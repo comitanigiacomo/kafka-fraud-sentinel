@@ -1,12 +1,22 @@
 import os
 import json
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from dotenv import load_dotenv
 from confluent_kafka import Consumer, KafkaError
+from pymongo import MongoClient
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 load_dotenv(os.path.join(basedir, '../../.env'))
+
+mongo_client = MongoClient(
+    host="localhost",
+    port=27017,
+    username=os.getenv("MONGO_USER"),
+    password=os.getenv("MONGO_PASSWORD")
+)
+db = mongo_client["fraud_sentinel"]
+alerts_collection = db["alerts"]
 
 def get_kafka_config():
     return {
@@ -44,15 +54,19 @@ def main():
                     print(f"[-] Errore Consumer: {msg.error()}")
                     break
 
-            # Decodifico la transazione in arrivo dal topic
-            tx = json.loads(msg.value().decode('utf-8'))
+            # Decodifico la transazione gestendo eventuali messaggi corrotti
+            try:
+                tx = json.loads(msg.value().decode('utf-8'))
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                continue
+
             user_id = tx['user_id']
             amount = tx['amount']
             
-            # Converto la stringa ISO del timestamp in un timestamp numerico (epoch)
+            # Converto la stringa ISO del timestamp in un timestamp numerico
             tx_time = datetime.fromisoformat(tx['timestamp']).timestamp()
 
-            print(f"[x] Analisi: {user_id} -> {amount} EUR")
+            print(f"Analisi: {user_id} -> {amount} EUR")
 
             if user_id not in user_activity_history:
                 user_activity_history[user_id] = []
@@ -64,18 +78,36 @@ def main():
             recent_txs = [t for t in user_activity_history[user_id] if (tx_time - t) <= TIME_WINDOW_SECONDS]
             user_activity_history[user_id] = recent_txs
 
-            # 3. Controllo se superiamo la soglia di velocità o di importo anomalo
+            # 3. Controllo superamento soglia di velocità o di importo anomalo
             is_velocity_fraud = len(recent_txs) > MAX_TRANSACTIONS_ALLOWED
             is_amount_fraud = amount > 5000.0
 
+            alert_data = None
+
             if is_velocity_fraud:
-                print(f"FRODE RILEVATA (Velocity Check): L'utente {user_id} ha fatto {len(recent_txs)} transazioni in meno di {TIME_WINDOW_SECONDS} secondi")
+                print(f"(Velocity Check): L'utente {user_id} ha fatto {len(recent_txs)} transazioni in meno di {TIME_WINDOW_SECONDS} secondi")
+                alert_data = {
+                    "type": "VELOCITY_FRAUD", 
+                    "user_id": user_id, 
+                    "tx_count": len(recent_txs), 
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                }
             
             if is_amount_fraud:
-                print(f"FRODE RILEVATA (High Amount): Transazione sospetta di {amount} EUR per l'utente {user_id}!")
+                print(f"Transazione sospetta di {amount} EUR per l'utente {user_id}")
+                alert_data = {
+                    "type": "AMOUNT_FRAUD", 
+                    "user_id": user_id, 
+                    "amount": amount, 
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                }
 
             if not is_velocity_fraud and not is_amount_fraud:
                 print(f"-> Transazione regolare per {user_id}.")
+
+            if alert_data:
+                alerts_collection.insert_one(alert_data)
+                print("salvato nel database MongoDB")
 
     except KeyboardInterrupt:
         print("\n Interruzione ricevuta. Chiusura del consumer in corso...")
