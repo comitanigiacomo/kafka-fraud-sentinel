@@ -95,10 +95,24 @@ services:
     networks:
       - kafka-net
 
+  mongodb:
+    image: mongo:7.0
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - kafka-net
+
 volumes:
   kafka_1_data:
   kafka_2_data:
   kafka_3_data:
+  mongodb_data:
 
 networks:
   kafka-net:
