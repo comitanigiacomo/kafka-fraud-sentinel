@@ -181,8 +181,6 @@
 
         document.getElementById('btn-run-sec').addEventListener('click', () => {
             fetch('/api/trigger/security-test', { method: 'POST' })
-                .then(response => response.json())
-                .then(data => alert("Risultato test sicurezza:\n\n" + data.output))
                 .catch(err => console.error("Errore security audit:", err));
         });
 

@@ -56,17 +56,8 @@ def trigger_simulation():
 @app.post("/api/trigger/security-test")
 def trigger_security_test():
     script_path = os.path.join(root_dir, "services/attacker/attacker_wrong_auth.py")
-    try:
-        result = subprocess.run(
-            [sys.executable, script_path],
-            capture_output=True,
-            text=True,
-            timeout=10
-        )
-        output = (result.stdout + result.stderr).strip()
-    except subprocess.TimeoutExpired:
-        output = "Timeout: nessuna risposta dal broker entro 10 secondi."
-    return {"status": "completed", "script": "attacker_wrong_auth.py", "output": output}
+    subprocess.run([sys.executable, script_path], timeout=10)
+    return {"status": "completed"}
 
 @app.websocket("/ws/alerts")
 async def websocket_alerts(websocket: WebSocket):
