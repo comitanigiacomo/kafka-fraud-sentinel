@@ -1,6 +1,5 @@
 import os
 import json
-import time
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 from confluent_kafka import Consumer, KafkaError
@@ -21,11 +20,11 @@ alerts_collection = db["alerts"]
 def get_kafka_config():
     return {
         'bootstrap.servers': 'localhost:9092,localhost:9094,localhost:9095',
-        'security.protocol': 'SASL_SSL',
-        'sasl.mechanisms': 'PLAIN',
-        'sasl.username': os.getenv('KAFKA_CLIENT_USER'),
-        'sasl.password': os.getenv('KAFKA_CLIENT_PASSWORD'),
+        'security.protocol': 'SSL',
         'ssl.ca.location': os.path.join(basedir, '../../security/ca.pem'),
+        'ssl.certificate.location': os.path.join(basedir, '../../security/consumer.crt'),
+        'ssl.key.location': os.path.join(basedir, '../../security/consumer.key.pem'),
+        'ssl.endpoint.identification.algorithm': 'none',
         'group.id': 'fraud-detection-group',
         'auto.offset.reset': 'earliest'
     }
@@ -82,32 +81,34 @@ def main():
             is_velocity_fraud = len(recent_txs) > MAX_TRANSACTIONS_ALLOWED
             is_amount_fraud = amount > 5000.0
 
-            alert_data = None
+            # Raccolgo tutti gli alert in una lista per gestire il caso in cui
+            # una transazione sia sospetta sia per importo che per velocita'
+            alerts_to_save = []
 
             if is_velocity_fraud:
                 print(f"(Velocity Check): L'utente {user_id} ha fatto {len(recent_txs)} transazioni in meno di {TIME_WINDOW_SECONDS} secondi")
-                alert_data = {
+                alerts_to_save.append({
                     "type": "VELOCITY_FRAUD", 
                     "user_id": user_id, 
                     "tx_count": len(recent_txs), 
                     "timestamp": datetime.now(timezone.utc).isoformat()
-                }
+                })
             
             if is_amount_fraud:
                 print(f"Transazione sospetta di {amount} EUR per l'utente {user_id}")
-                alert_data = {
+                alerts_to_save.append({
                     "type": "AMOUNT_FRAUD", 
                     "user_id": user_id, 
                     "amount": amount, 
                     "timestamp": datetime.now(timezone.utc).isoformat()
-                }
+                })
 
-            if not is_velocity_fraud and not is_amount_fraud:
+            if not alerts_to_save:
                 print(f"-> Transazione regolare per {user_id}.")
-
-            if alert_data:
-                alerts_collection.insert_one(alert_data)
-                print("salvato nel database MongoDB")
+            else:
+                for alert_data in alerts_to_save:
+                    alerts_collection.insert_one(alert_data)
+                    print(f"Alert [{alert_data['type']}] salvato nel database MongoDB")
 
     except KeyboardInterrupt:
         print("\n Interruzione ricevuta. Chiusura del consumer in corso...")
