@@ -220,4 +220,6 @@ security/*.jks
 security/*.pem
 security/*.csr
 security/*.crt
+security/*.key
+security/*.key.pem
 security/*-creds/

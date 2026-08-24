@@ -17,19 +17,18 @@ def delivery_report(err, msg):
     else:
         print(f"Transazione inoltrata -> Topic: {msg.topic()} | Partizione: {msg.partition()} | Offset: {msg.offset()}")
 
-# Configura il producer con SASL_SSL e la CA per connettermi al cluster sicuro
+# Configura il producer con mTLS: CA per validare il broker, certificato client per autenticarsi
 def get_kafka_config():
     return {
         'bootstrap.servers': 'localhost:9092,localhost:9094,localhost:9095',
-        'security.protocol': 'SASL_SSL',
-        'sasl.mechanisms': 'PLAIN',
-        'sasl.username': os.getenv('KAFKA_CLIENT_USER'),
-        'sasl.password': os.getenv('KAFKA_CLIENT_PASSWORD'),
+        'security.protocol': 'SSL',
         'ssl.ca.location': os.path.join(basedir, '../../security/ca.pem'),
+        'ssl.certificate.location': os.path.join(basedir, '../../security/producer.crt'),
+        'ssl.key.location': os.path.join(basedir, '../../security/producer.key.pem'),
+        'ssl.endpoint.identification.algorithm': 'none',
         'acks': 'all',
         'retries': 3
     }
-
 # Genera una transazione casuale, con un 15% di possibilità di avere un importo alto (sospetto)
 def generate_mock_transaction():
     users = ["user_101", "user_102", "user_103", "user_104", "user_105"]

@@ -1,22 +1,43 @@
 #!/bin/bash
-cd /work
-rm -rf *creds *.p12 *.password *.crt *.key *.pem *.cnf *.jks *.csr 2>/dev/null || true
+cd "$(dirname "$0")"
 
-keytool -genkeypair -alias ca -keyalg RSA -keysize 2048 -dname "CN=SentinelCA" -ext bc:c=ca:true -validity 365 -keystore ca.jks -storepass sentinel -keypass sentinel -storetype JKS
+# Genera la CA (Certificate Authority) interna del progetto
+openssl genrsa -out ca.key 2048
+openssl req -x509 -new -nodes -key ca.key -sha256 -days 365 -out ca.pem -subj "/CN=SentinelCA"
 
-keytool -exportcert -alias ca -keystore ca.jks -storepass sentinel -rfc -file ca.pem
-
+# Genera un certificato per ogni broker Kafka
+# Il SAN (Subject Alternative Name) serve per far riconoscere il broker
+# sia dal nome host interno Docker (kafka-N) che da localhost
 for i in 1 2 3; do
-  DIR="broker-${i}-creds"
-  mkdir -p ${DIR}
+  mkdir -p broker-${i}-creds
 
-  keytool -genkeypair -alias broker -keyalg RSA -keysize 2048 -dname "CN=localhost" -ext "san=dns:localhost,dns:kafka-${i},ip:127.0.0.1" -validity 365 -keystore ${DIR}/broker-${i}.keystore.jks -storepass sentinel -keypass sentinel -storetype JKS
-  keytool -certreq -alias broker -keystore ${DIR}/broker-${i}.keystore.jks -storepass sentinel -file ${DIR}/broker.csr
-  keytool -gencert -alias ca -keystore ca.jks -storepass sentinel -infile ${DIR}/broker.csr -outfile ${DIR}/broker.crt -ext "san=dns:localhost,dns:kafka-${i},ip:127.0.0.1" -validity 365
+  openssl genrsa -out broker-${i}-creds/broker.key 2048
+  openssl req -new -key broker-${i}-creds/broker.key \
+    -out broker-${i}-creds/broker.csr \
+    -subj "/CN=kafka-${i}"
 
-  keytool -importcert -alias ca -keystore ${DIR}/broker-${i}.keystore.jks -storepass sentinel -file ca.pem -noprompt
-  keytool -importcert -alias broker -keystore ${DIR}/broker-${i}.keystore.jks -storepass sentinel -file ${DIR}/broker.crt -noprompt
-  
+  # Firma il certificato aggiungendo i SAN direttamente come parametro
+  echo "subjectAltName=DNS:kafka-${i},DNS:localhost" > san.ext
+  openssl x509 -req \
+    -in broker-${i}-creds/broker.csr \
+    -CA ca.pem -CAkey ca.key -CAcreateserial \
+    -out broker-${i}-creds/broker.crt \
+    -days 365 -sha256 \
+    -extfile san.ext
+
+  # Kafka con keystore PEM vuole certificato e chiave nello stesso file
+  cat broker-${i}-creds/broker.crt broker-${i}-creds/broker.key > broker-${i}-creds/broker-keystore.pem
+
+  cp ca.pem broker-${i}-creds/ca.pem
+  rm -f broker-${i}-creds/broker.csr san.ext
 done
 
-echo "Certificati pronti."
+# Genera un certificato client per producer, consumer e admin
+for CLIENT in producer consumer admin; do
+  openssl genrsa -out ${CLIENT}.key.pem 2048
+  openssl req -new -key ${CLIENT}.key.pem -out ${CLIENT}.csr -subj "/CN=${CLIENT}"
+  openssl x509 -req -in ${CLIENT}.csr -CA ca.pem -CAkey ca.key -CAcreateserial -out ${CLIENT}.crt -days 365 -sha256
+  rm -f ${CLIENT}.csr
+done
+
+echo "Certificati generati."

@@ -132,7 +132,7 @@
 
             const detailsTxt = isAmount 
                 ? `${alert.amount.toFixed(2)} EUR ${thresholdInfo}` 
-                : `${alert.tx_count} transazioni in finestra 5s`;
+                : `${alert.tx_count} transazioni in 10 secondi`;
 
             const traceId = (alert._id && alert._id.$oid) 
                 ? alert._id.$oid.slice(-7).toUpperCase() 

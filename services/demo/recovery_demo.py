@@ -7,15 +7,17 @@ from confluent_kafka import Consumer
 basedir = os.path.abspath(os.path.dirname(__file__))
 load_dotenv(os.path.join(basedir, '../../.env'))
 
+# Connessione mTLS con il certificato admin (firmato dalla stessa CA dei broker)
+# In questo modo si dimostra che qualsiasi client con un cert valido può connettersi.
 def get_recovery_config():
     return {
         'bootstrap.servers': 'localhost:9092,localhost:9094,localhost:9095',
-        'security.protocol': 'SASL_SSL',
-        'sasl.mechanisms': 'PLAIN',
-        'sasl.username': os.getenv('KAFKA_CLIENT_USER'),
-        'sasl.password': os.getenv('KAFKA_CLIENT_PASSWORD'),
+        'security.protocol': 'SSL',
         'ssl.ca.location': os.path.join(basedir, '../../security/ca.pem'),
-        
+        'ssl.certificate.location': os.path.join(basedir, '../../security/admin.crt'),
+        'ssl.key.location': os.path.join(basedir, '../../security/admin.key.pem'),
+        'ssl.endpoint.identification.algorithm': 'none',
+
         'group.id': 'demo-recovery-group', # Identificativo univoco del gruppo
         'auto.offset.reset': 'earliest',   # Se non c'è un segnalibro, parte dall'inizio
         'enable.auto.commit': True         # Kafka salva automaticamente l'offset in background
@@ -51,7 +53,7 @@ def main():
             time.sleep(2)
 
     except KeyboardInterrupt:
-        print("\n crash")
+        print("\nInterruzione ricevuta.")
     finally:
         consumer.close()
         print("Consumer disconnesso.")

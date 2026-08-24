@@ -8,7 +8,7 @@ The project meets all the course requirements: it is a distributed system with h
 
 The main part of the system is an Apache Kafka cluster running in KRaft mode with 3 nodes to ensure fault tolerance. The logic is written in Python using the `confluent-kafka` library. It works as a microservice architecture: one service produces the data and another reads it, showing exactly why a message queue is needed for this specific task. The detected alerts are then saved in a `MongoDB` database.
 
-For the frontend, a web dashboard was built using `FastAPI` and `WebSockets` to send real-time updates to a simple `HTML`/`JS`/`CSS` page. To keep the system secure, `TLS encryption` and `SASL/PLAIN` authentication are configured for external clients.
+For the frontend, a web dashboard was built using `FastAPI` and `WebSockets` to send real-time updates to a simple `HTML`/`JS`/`CSS` page. To keep the system secure, **mutual TLS (mTLS)** is configured for all external clients: each service (producer, consumer, admin) presents its own certificate signed by an internal CA, and the broker enforces `ssl.client.auth=required`, rejecting any connection that does not provide a valid client certificate.
 
 ## Repository structure
 
@@ -35,14 +35,21 @@ Open a terminal in the project root and start the Kafka cluster and MongoDB usin
 docker-compose up -d
 ```
 
-2. start the conusmer
+2. Configure the ACL permissions (run once)
+Once the cluster is up, run this script to set the read/write permissions for the producer and consumer:
+
+```bash
+bash security/setup-acls.sh
+```
+
+3. Start the consumer
 Open a second terminal, activate your Python virtual environment, and run the backend script that processes the data:
 
 ```bash
-python services/consumer/consumer.py
+python services/fraud-consumer/consumer.py
 ```
 
-3. start the web dashboard
+4. Start the web dashboard
 Open a third terminal and run the FastAPI server:
 
 ```bash
@@ -57,7 +64,7 @@ Once the dashboard is open, you can test the system using the UI controls. Pleas
 
 Clicking the "Inietta Transazioni" button will trigger the producer script (`services/producer/producer.py`) in the background. It will start injecting fake financial transactions into the Kafka topics, and you will see the dashboard update as the consumer detects the anomalies.
 
-To demonstrate robustness against security attacks, I included an audit feature. By clicking the "Test Audit/Auth" button, the backend will run a separate script (`scripts/attacker_wrong_auth.py`) that attempts to access the Kafka cluster using invalid SASL credentials. If you check the terminal, you will see the cluster actively rejecting the connection.
+To demonstrate robustness against security attacks, I included an audit feature. By clicking the "Test Audit/Auth" button, the backend will run a separate script (`services/attacker/attacker_wrong_auth.py`) that attempts to connect to the Kafka cluster without a valid client certificate. Since the cluster enforces mTLS, the connection is rejected at the TLS handshake level.
 
 During the demonstration, it is also possible to show fault tolerance and high availability by simulating node failures (e.g., stopping a Kafka container while the data is flowing) without interrupting the service.
 
