@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fraud Sentinel</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="header">
+        <h1>
+            <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            Kafka Fraud Sentinel
+        </h1>
+        <div class="live-indicator">
+            <div class="dot" id="ws-dot"></div>
+            <span id="ws-text">Live feed</span>
+        </div>
+    </div>
+
+    <div class="kpis">
+        <div>
+            <div class="kpi-title">Alert attivi</div>
+            <div class="kpi-value" id="kpi-alerts">0</div>
+        </div>
+        <div>
+            <div class="kpi-title">€ Valore a rischio</div>
+            <div class="kpi-value" id="kpi-value">€ 0</div>
+        </div>
+        <div>
+            <div class="kpi-title">Utenti coinvolti</div>
+            <div class="kpi-value" id="kpi-users">0</div>
+        </div>
+    </div>
+
+    <div class="distribution-bar">
+        <div class="dist-red" id="bar-red"></div>
+        <div class="dist-yellow" id="bar-yellow"></div>
+    </div>
+    
+    <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background: var(--red);"></div> Importo anomalo · <span id="leg-amount">0</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background: var(--yellow);"></div> Velocità sospetta · <span id="leg-velocity">0</span></div>
+    </div>
+
+    <div class="controls">
+        <input type="text" class="search-box" id="search-input" placeholder="Cerca utente (es. user_101)...">
+        
+        <div class="action-triggers">
+            <button class="btn btn-trigger" id="btn-run-sim">Inietta Transazioni</button>
+            <button class="btn btn-trigger-sec" id="btn-run-sec">Test Audit/Auth</button>
+        </div>
+
+        <div class="filters">
+            <button class="btn filter-btn active" data-filter="ALL">Tutti</button>
+            <button class="btn filter-btn" data-filter="AMOUNT_FRAUD">Importo</button>
+            <button class="btn filter-btn" data-filter="VELOCITY_FRAUD">Velocità</button>
+        </div>
+    </div>
+
+    <h3>Eventi recenti</h3>
+    
+    <div class="event-header-row">
+        <div>UTENTE</div>
+        <div>TIPO RILEVAMENTO</div>
+        <div style="text-align: center;">DETTAGLI ANOMALIA</div>
+        <div style="text-align: center;">TRACE ID</div>
+        <div style="text-align: right;">ORARIO</div>
+    </div>
+
+    <div class="event-list" id="events-container">
+    </div>
+
+    <script>
+        let totalAlerts = 0;
+        let totalValue = 0;
+        let countAmount = 0;
+        let countVelocity = 0;
+        const uniqueUsers = new Set();
+        
+        let currentSearch = "";
+        let currentFilter = "ALL";
+
+        function formatTime(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleTimeString('it-IT');
+        }
+
+        function formatCurrency(num) {
+            return new Intl.NumberFormat('it-IT', { maximumFractionDigits: 0 }).format(num);
+        }
+
+        function updateDashboardState(alert) {
+            totalAlerts++;
+            uniqueUsers.add(alert.user_id);
+            
+            if (alert.type === "AMOUNT_FRAUD") {
+                countAmount++;
+                totalValue += alert.amount;
+            } else {
+                countVelocity++;
+            }
+
+            document.getElementById('kpi-alerts').textContent = totalAlerts;
+            document.getElementById('kpi-value').textContent = "€ " + formatCurrency(totalValue);
+            document.getElementById('kpi-users').textContent = uniqueUsers.size;
+
+            document.getElementById('leg-amount').textContent = countAmount;
+            document.getElementById('leg-velocity').textContent = countVelocity;
+
+            const percRed = (countAmount / totalAlerts) * 100;
+            const percYellow = (countVelocity / totalAlerts) * 100;
+            
+            document.getElementById('bar-red').style.width = percRed + "%";
+            document.getElementById('bar-yellow').style.width = percYellow + "%";
+        }
+
+        function addAlertToList(alert) {
+            const container = document.getElementById('events-container');
+            const item = document.createElement('div');
+            
+            const isAmount = alert.type === "AMOUNT_FRAUD";
+            
+            item.className = `event-item ${isAmount ? 'type-amount' : 'type-velocity'}`;
+            item.dataset.type = alert.type;
+            item.dataset.user = alert.user_id;
+
+            const badgeCls = isAmount ? 'badge red' : 'badge yellow';
+            const badgeTxt = isAmount ? 'Importo anomalo' : 'Velocità sospetta';
+            
+            const thresholdInfo = alert.threshold ? `(Limite: ${alert.threshold}€)` : `(Soglia superata)`;
+
+            const detailsTxt = isAmount 
+                ? `${alert.amount.toFixed(2)} EUR ${thresholdInfo}` 
+                : `${alert.tx_count} transazioni in finestra 5s`;
+
+            const traceId = (alert._id && alert._id.$oid) 
+                ? alert._id.$oid.slice(-7).toUpperCase() 
+                : "N/A";
+
+            item.innerHTML = `
+                <span class="event-user">${alert.user_id}</span>
+                <div><span class="${badgeCls}">${badgeTxt}</span></div>
+                <div class="event-details">${detailsTxt}</div>
+                <div class="event-meta" style="text-align: center; color: #6e7681;">#${traceId}</div>
+                <div class="event-meta">${formatTime(alert.timestamp)}</div>
+            `;
+            
+            container.insertBefore(item, container.firstChild);
+            updateDashboardState(alert);
+            applyFilters();
+        }
+
+        function applyFilters() {
+            const items = document.querySelectorAll('.event-item');
+            items.forEach(item => {
+                const matchSearch = item.dataset.user.toLowerCase().includes(currentSearch.toLowerCase());
+                const matchType = currentFilter === "ALL" || item.dataset.type === currentFilter;
+                item.style.display = (matchSearch && matchType) ? "grid" : "none";
+            });
+        }
+
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            currentSearch = e.target.value;
+            applyFilters();
+        });
+
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                currentFilter = e.target.dataset.filter;
+                applyFilters();
+            });
+        });
+
+        document.getElementById('btn-run-sim').addEventListener('click', () => {
+            fetch('/api/trigger/simulation', { method: 'POST' })
+                .catch(err => console.error("Errore simulazione:", err));
+        });
+
+        document.getElementById('btn-run-sec').addEventListener('click', () => {
+            fetch('/api/trigger/security-test', { method: 'POST' })
+                .catch(err => console.error("Errore security audit:", err));
+        });
+
+        fetch('/api/alerts')
+            .then(response => response.json())
+            .then(data => data.reverse().forEach(alert => addAlertToList(alert)));
+
+        const ws = new WebSocket(`ws://${window.location.host}/ws/alerts`);
+        
+        ws.onopen = () => { document.getElementById('ws-dot').style.backgroundColor = '#2ea043'; };
+        ws.onmessage = (event) => { addAlertToList(JSON.parse(event.data)); };
+        ws.onclose = () => { 
+            document.getElementById('ws-dot').style.backgroundColor = 'var(--red)'; 
+            document.getElementById('ws-text').textContent = 'Disconnesso';
+        };
+    </script>
+</body>
+</html>

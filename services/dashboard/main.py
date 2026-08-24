@@ -1,13 +1,18 @@
 import os
+import sys
+import subprocess
 import asyncio
 from dotenv import load_dotenv
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Response
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pymongo import MongoClient
 from bson.json_util import dumps
 
 basedir = os.path.abspath(os.path.dirname(__file__))
-load_dotenv(os.path.join(basedir, '../../.env'))
+root_dir = os.path.abspath(os.path.join(basedir, '../../'))
+load_dotenv(os.path.join(root_dir, '.env'))
 
 mongo_client = MongoClient(
     host="localhost",
@@ -20,7 +25,6 @@ alerts_collection = db["alerts"]
 
 app = FastAPI(title="Fraud Sentinel API")
 
-# Abilitaziione CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -29,40 +33,45 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.mount("/static", StaticFiles(directory=os.path.join(basedir, "static")), name="static")
+
+@app.get("/")
+def serve_dashboard():
+    html_path = os.path.join(basedir, "index.html")
+    with open(html_path, "r", encoding="utf-8") as f:
+        html_content = f.read()
+    return HTMLResponse(content=html_content)
+
 @app.get("/api/alerts")
-
-# Ritorna gli ultimi 50 allarmi dal database.
 def get_historical_alerts():
-     
-    # Ordina gli allarmi per ID crescente e ritorna i primi 50.
     alerts = list(alerts_collection.find().sort("_id", -1).limit(50))
-    return dumps(alerts)
+    return Response(content=dumps(alerts), media_type="application/json")
 
+@app.post("/api/trigger/simulation")
+def trigger_simulation():
+    script_path = os.path.join(root_dir, "services/producer/producer.py")
+    subprocess.Popen([sys.executable, script_path])
+    return {"status": "started", "script": "producer.py"}
+
+@app.post("/api/trigger/security-test")
+def trigger_security_test():
+    script_path = os.path.join(root_dir, "services/attacker/attacker_wrong_auth.py")
+    subprocess.Popen([sys.executable, script_path])
+    return {"status": "started", "script": "attacker_wrong_auth.py"}
 
 @app.websocket("/ws/alerts")
 async def websocket_alerts(websocket: WebSocket):
     await websocket.accept()
-    
     last_known_count = alerts_collection.count_documents({})
-
     try:
         while True:
-            # Conto i documenti attuali
             current_count = alerts_collection.count_documents({})
-            
-            # Se il numero è salito, il Consumer Kafka ha trovato una frode
             if current_count > last_known_count:
-                
                 new_alerts_count = current_count - last_known_count
-                
                 new_alerts = list(alerts_collection.find().sort("_id", -1).limit(new_alerts_count))
-                
                 for alert in new_alerts:
                     await websocket.send_text(dumps(alert))
-                
                 last_known_count = current_count
-            
-            await asyncio.sleep(2.0)
-
+            await asyncio.sleep(1.0)
     except WebSocketDisconnect:
-        print("Client disconnesso.")
+        pass

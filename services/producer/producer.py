@@ -35,7 +35,7 @@ def generate_mock_transaction():
     users = ["user_101", "user_102", "user_103", "user_104", "user_105"]
     merchants = ["Amazon", "Supermarket Roma", "ATM Milano", "CryptoExchange", "Luxury Store", "Tech Shop"]
     
-    is_high_amount = random.random() < 0.15 
+    is_high_amount = random.random() < 0.30 
     
     transaction = {
         "transaction_id": f"tx_{random.randint(100000, 999999)}",
