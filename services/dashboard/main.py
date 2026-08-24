@@ -56,8 +56,17 @@ def trigger_simulation():
 @app.post("/api/trigger/security-test")
 def trigger_security_test():
     script_path = os.path.join(root_dir, "services/attacker/attacker_wrong_auth.py")
-    subprocess.Popen([sys.executable, script_path])
-    return {"status": "started", "script": "attacker_wrong_auth.py"}
+    try:
+        result = subprocess.run(
+            [sys.executable, script_path],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        output = (result.stdout + result.stderr).strip()
+    except subprocess.TimeoutExpired:
+        output = "Timeout: nessuna risposta dal broker entro 10 secondi."
+    return {"status": "completed", "script": "attacker_wrong_auth.py", "output": output}
 
 @app.websocket("/ws/alerts")
 async def websocket_alerts(websocket: WebSocket):
@@ -68,7 +77,11 @@ async def websocket_alerts(websocket: WebSocket):
             current_count = alerts_collection.count_documents({})
             if current_count > last_known_count:
                 new_alerts_count = current_count - last_known_count
-                new_alerts = list(alerts_collection.find().sort("_id", -1).limit(new_alerts_count))
+                # Prendo gli ultimi N alert e li rimetto in ordine cronologico prima di inviarli
+                new_alerts = list(
+                    alerts_collection.find().sort("_id", -1).limit(new_alerts_count)
+                )
+                new_alerts.reverse()
                 for alert in new_alerts:
                     await websocket.send_text(dumps(alert))
                 last_known_count = current_count
