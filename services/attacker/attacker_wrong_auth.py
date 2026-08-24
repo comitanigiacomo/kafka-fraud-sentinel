@@ -12,7 +12,8 @@ def get_no_cert_config():
         'ssl.ca.location': os.path.join(basedir, '../../security/ca.pem'),
         'ssl.endpoint.identification.algorithm': 'none',
         'group.id': 'attacker-group',
-        'socket.timeout.ms': 5000
+        'socket.timeout.ms': 5000,
+        'log_level': 0  # nasconde i log interni di rdkafka
     }
 
 def main():
