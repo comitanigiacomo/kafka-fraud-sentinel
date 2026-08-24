@@ -10,6 +10,19 @@ The main part of the system is an Apache Kafka cluster running in KRaft mode wit
 
 For the frontend, a web dashboard was built using `FastAPI` and `WebSockets` to send real-time updates to a simple `HTML`/`JS`/`CSS` page. To keep the system secure, `TLS encryption` and `SASL/PLAIN` authentication are configured for external clients.
 
+## Repository structure
+
+```text
+├── security/              # TLS certificates, CA generation scripts, and broker credentials
+├── services/
+│   ├── attacker/          # Scripts simulating security violations (plain text, bad credentials)
+│   ├── dashboard/         # FastAPI backend, WebSocket logic, and web interface
+│   ├── demo/              # Scripts demonstrating consumer group state recovery
+│   ├── fraud-consumer/    # Stream processing engine detecting fraud patterns
+│   └── producer/          # Transaction generator injecting synthetic data
+├── docker-compose.yml     # Multi-node Kafka cluster (KRaft) and MongoDB configuration
+└── requirements.txt       # Python dependencies
+
 ## How to run the project
 
 You only need Docker and Python installed on your system.
