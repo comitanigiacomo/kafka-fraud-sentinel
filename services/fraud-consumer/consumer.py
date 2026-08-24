@@ -47,9 +47,12 @@ def main():
             if msg is None: 
                 continue
             if msg.error():
-                if msg.error().code() == KafkaError._PARTITION_EOF: 
+                if msg.error().code() == KafkaError._PARTITION_EOF:
                     continue
-                else: 
+                elif msg.error().code() == KafkaError.UNKNOWN_TOPIC_OR_PART:
+                    # Il topic non esiste ancora, aspetto che il producer lo crei
+                    continue
+                else:
                     print(f"[-] Errore Consumer: {msg.error()}")
                     break
 
