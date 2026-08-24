@@ -22,6 +22,7 @@ For the frontend, a web dashboard was built using `FastAPI` and `WebSockets` to 
 │   └── producer/          # Transaction generator injecting synthetic data
 ├── docker-compose.yml     # Multi-node Kafka cluster (KRaft) and MongoDB configuration
 └── requirements.txt       # Python dependencies
+```
 
 ## How to run the project
 
