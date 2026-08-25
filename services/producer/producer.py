@@ -50,6 +50,9 @@ def generate_mock_transaction():
 def main():
     print("Avvio del servizio Producer (Simulatore Transazioni)...")
     
+    # Lista degli utenti per selezionare il target della raffica
+    users = [f"user_{i}" for i in range(100, 200)]
+    
     try:
         producer = Producer(get_kafka_config())
     except Exception as e:
