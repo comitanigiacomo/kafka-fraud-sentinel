@@ -1,5 +1,6 @@
 import os
 import json
+import requests
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 from confluent_kafka import Consumer, KafkaError
@@ -16,6 +17,30 @@ mongo_client = MongoClient(
 )
 db = mongo_client["fraud_sentinel"]
 alerts_collection = db["alerts"]
+
+# Leggo le credenziali del bot Telegram dal .env.
+# Se non ci sono, le notifiche vengono semplicemente saltate.
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+
+def send_telegram_alert(message):
+    # Se il token non e' configurato, non fa niente
+    if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
+        return
+    
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": message,
+        "parse_mode": "Markdown"
+    }
+    
+    try:
+        requests.post(url, json=payload, timeout=5)
+    except Exception as e:
+        # Se la richiesta fallisce (es. niente internet), ignoro l'errore
+        # e il consumer continua a girare normalmente
+        print(f"Avviso: notifica Telegram non inviata ({e})")
 
 def get_kafka_config():
     return {
@@ -112,6 +137,21 @@ def main():
                 for alert_data in alerts_to_save:
                     alerts_collection.insert_one(alert_data)
                     print(f"Alert [{alert_data['type']}] salvato nel database MongoDB")
+
+                    # Mando una notifica Telegram per ogni alert rilevato
+                    if alert_data["type"] == "VELOCITY_FRAUD":
+                        msg_text = (
+                            f"🚨 *VELOCITY FRAUD*\n"
+                            f"Utente: `{user_id}`\n"
+                            f"Ha fatto {alert_data['tx_count']} transazioni in meno di {TIME_WINDOW_SECONDS} secondi"
+                        )
+                    else:
+                        msg_text = (
+                            f"💰 *AMOUNT FRAUD*\n"
+                            f"Utente: `{user_id}`\n"
+                            f"Importo sospetto: {alert_data['amount']:.2f} EUR"
+                        )
+                    send_telegram_alert(msg_text)
 
     except KeyboardInterrupt:
         print("\n Interruzione ricevuta. Chiusura del consumer in corso...")
