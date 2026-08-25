@@ -143,10 +143,11 @@ def main():
                     alerts_collection.insert_one(alert_data)
                     print(f"Alert [{alert_data['type']}] salvato nel database MongoDB")
 
-                    # Rimuovo _id (aggiunto da PyMongo) prima di serializzare in JSON
+                    # PyMongo inietta '_id' come oggetto non serializzabile.
+                    # Invece di cancellarlo, lo converto nel formato che la UI si aspetta.
                     alert_json = alert_data.copy()
                     if "_id" in alert_json:
-                        del alert_json["_id"]
+                        alert_json["_id"] = {"$oid": str(alert_json["_id"])}
 
                     # Pubblico anche l'alert sul topic fraud-alerts.
                     alert_producer.produce(
