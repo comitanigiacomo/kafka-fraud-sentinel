@@ -31,7 +31,8 @@ def get_kafka_config():
     }
 # Genera una transazione casuale, con un 15% di possibilità di avere un importo alto (sospetto)
 def generate_mock_transaction():
-    users = ["user_101", "user_102", "user_103", "user_104", "user_105"]
+    # Generiamo 100 utenti diversi (da user_100 a user_199) per avere piu' diversita'
+    users = [f"user_{i}" for i in range(100, 200)]
     merchants = ["Amazon", "Supermarket Roma", "ATM Milano", "CryptoExchange", "Luxury Store", "Tech Shop"]
     
     is_high_amount = random.random() < 0.30 
