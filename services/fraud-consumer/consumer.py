@@ -143,11 +143,16 @@ def main():
                     alerts_collection.insert_one(alert_data)
                     print(f"Alert [{alert_data['type']}] salvato nel database MongoDB")
 
+                    # Rimuovo _id (aggiunto da PyMongo) prima di serializzare in JSON
+                    alert_json = alert_data.copy()
+                    if "_id" in alert_json:
+                        del alert_json["_id"]
+
                     # Pubblico anche l'alert sul topic fraud-alerts.
                     alert_producer.produce(
                         topic='fraud-alerts',
                         key=user_id.encode('utf-8'),
-                        value=json.dumps(alert_data).encode('utf-8'),
+                        value=json.dumps(alert_json).encode('utf-8'),
                         callback=delivery_report
                     )
                     alert_producer.poll(0)
