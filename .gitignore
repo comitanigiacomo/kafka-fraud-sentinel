@@ -9,8 +9,6 @@ venv/
 *.log
 *.out
 *.toc
-*.pdf
-# (Wait, the user wanted to know whether to commit the PDF/images. I'll NOT ignore the PDF and images, only the auxiliary latex files)
 
 # Security (generated certs)
 *.crt
