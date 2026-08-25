@@ -49,6 +49,7 @@
         <div class="action-triggers">
             <button class="btn btn-trigger" id="btn-run-sim">Inietta Transazioni</button>
             <button class="btn btn-trigger-sec" id="btn-run-sec">Test Audit/Auth</button>
+            <button class="btn btn-trigger-stress" id="btn-run-stress">Stress Test (Velocity)</button>
         </div>
 
         <div class="filters">
@@ -182,6 +183,11 @@
         document.getElementById('btn-run-sec').addEventListener('click', () => {
             fetch('/api/trigger/security-test', { method: 'POST' })
                 .catch(err => console.error("Errore security audit:", err));
+        });
+
+        document.getElementById('btn-run-stress').addEventListener('click', () => {
+            fetch('/api/trigger/stress-test', { method: 'POST' })
+                .catch(err => console.error("Errore stress test:", err));
         });
 
         fetch('/api/alerts')

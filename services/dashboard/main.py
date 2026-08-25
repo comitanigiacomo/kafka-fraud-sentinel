@@ -59,6 +59,14 @@ def trigger_security_test():
     subprocess.run([sys.executable, script_path], timeout=10)
     return {"status": "completed"}
 
+@app.post("/api/trigger/stress-test")
+def trigger_stress_test():
+    # Lancia lo stress producer in background: manda una raffica di transazioni
+    # per lo stesso utente, cosi' il consumer rileva il velocity fraud.
+    script_path = os.path.join(root_dir, "services/stress-producer/stress_producer.py")
+    subprocess.Popen([sys.executable, script_path])
+    return {"status": "started", "script": "stress_producer.py"}
+
 @app.websocket("/ws/alerts")
 async def websocket_alerts(websocket: WebSocket):
     await websocket.accept()

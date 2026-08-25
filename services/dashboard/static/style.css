@@ -214,6 +214,16 @@ body {
     border-color: var(--red);
 }
 
+.btn-trigger-stress {
+    border-color: #4a3a18;
+    color: #f5a623;
+}
+
+.btn-trigger-stress:hover {
+    background: #33270a;
+    border-color: #f5a623;
+}
+
 h3 {
     font-size: 15px;
     font-weight: 500;
