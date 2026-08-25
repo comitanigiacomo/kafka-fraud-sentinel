@@ -20,7 +20,7 @@ def main():
     print("Tentativo di connessione senza certificato client...")
 
     consumer = Consumer(get_no_cert_config())
-    consumer.subscribe(['test-transazioni'])
+    consumer.subscribe(['transactions'])
 
     try:
         msg = consumer.poll(5.0)
