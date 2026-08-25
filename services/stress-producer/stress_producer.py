@@ -59,7 +59,7 @@ def main():
         }
 
         producer.produce(
-            topic="test-transazioni",
+            topic="transactions",
             key=target_user.encode('utf-8'),
             value=json.dumps(tx).encode('utf-8'),
             callback=delivery_report
