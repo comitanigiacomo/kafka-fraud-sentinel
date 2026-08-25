@@ -27,6 +27,12 @@ There are two distinct consumer groups:
 ## Repository structure
 
 ```text
+├── demo/
+│   └── demo-broker-failure.sh # script demonstrating cluster resilience during broker crashes
+├── report/
+│   ├── images/                # diagrams and screenshots used in the project report
+│   ├── report.tex             # LaTeX source file of the project report
+│   └── Kafka_Fraud_Sentinel.pdf # finalized project report
 ├── security/
 │   ├── generate-certs.sh      # generates CA and all client/broker certificates
 │   ├── setup-acls.sh          # configures Kafka ACLs (run once after startup)
@@ -44,7 +50,7 @@ There are two distinct consumer groups:
 
 ## How to run the project
 
-You only need Docker and Python installed.
+You need Docker and Python 3 installed.
 
 **1. Start the infrastructure**
 
@@ -52,13 +58,19 @@ You only need Docker and Python installed.
 docker-compose up -d
 ```
 
-**2. Configure ACL permissions** (run once, waits ~30 seconds for the cluster)
+**2. Configure ACL permissions** (run once, waits ~30 seconds for the cluster to be ready)
 
 ```bash
 bash security/setup-acls.sh
 ```
 
-**3. (Optional) Configure Telegram notifications**
+**3. Install Python dependencies**
+
+```bash
+pip install -r requirements.txt
+```
+
+**4. (Optional) Configure Telegram notifications**
 
 Edit the `.env` file and fill in your bot credentials:
 
@@ -69,13 +81,13 @@ TELEGRAM_CHAT_ID=your_chat_id_here
 
 If left empty, the consumer works normally without sending notifications.
 
-**4. Start the fraud consumer**
+**5. Start the fraud consumer**
 
 ```bash
 python services/fraud-consumer/consumer.py
 ```
 
-**5. Start the dashboard**
+**6. Start the dashboard**
 
 ```bash
 uvicorn services.dashboard.main:app --reload --port 8000
@@ -91,11 +103,15 @@ The dashboard has three buttons:
 - **Stress Test (Velocity)** — runs the stress producer, which sends 15 transactions for the same user in ~4 seconds, well above the threshold of 3 per 10 seconds. This triggers `VELOCITY_FRAUD` alerts.
 - **Test Audit/Auth** — runs a script that tries to connect to the cluster without a valid client certificate. The connection is rejected at the TLS handshake level, demonstrating that mTLS works correctly.
 
-**Fault tolerance demo:** to show that the cluster survives node failures, stop one broker while the producer is running and observe that messages continue to flow without interruption:
+**Fault tolerance demo:** to show that the cluster survives node failures, you can run the provided bash script or do it manually while the producer is running:
 
 ```bash
+./demo/demo-broker-failure.sh
+```
+OR manually:
+```bash
 docker stop kafka-2
-# producer keeps running...
+# producer keeps running without dropping messages
 docker start kafka-2
 # kafka-2 re-joins and catches up automatically
 ```
