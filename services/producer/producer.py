@@ -55,7 +55,7 @@ def main():
         print(f"Errore critico di connessione al cluster Kafka: {e}")
         return
 
-    topic_name = "test-transazioni"
+    topic_name = "transactions"
 
     try:
         counter = 1

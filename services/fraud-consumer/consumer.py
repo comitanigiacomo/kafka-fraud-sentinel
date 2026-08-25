@@ -31,7 +31,7 @@ def get_kafka_config():
 
 def main():    
     consumer = Consumer(get_kafka_config())
-    consumer.subscribe(['test-transazioni'])
+    consumer.subscribe(['transactions'])
 
     # Dizionario per tracciare la cronologia degli utenti in memoria
     # Formato: { user_id: [timestamp_1, timestamp_2, ...] }

@@ -26,7 +26,7 @@ def get_recovery_config():
 def main():
     
     consumer = Consumer(get_recovery_config())
-    consumer.subscribe(['test-transazioni'])
+    consumer.subscribe(['transactions'])
 
     try:
         while True:
