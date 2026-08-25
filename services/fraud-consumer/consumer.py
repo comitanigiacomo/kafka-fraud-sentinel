@@ -39,7 +39,7 @@ def send_telegram_alert(message):
         print(f"Avviso: notifica Telegram non inviata ({e})")
 
 def get_ssl_base():
-    # Configurazione SSL comune, la riuso sia per il consumer che per il producer interno
+    # metto le opzioni SSL comuni in una funzione separata cosi' non le riscrivo due volte
     return {
         'bootstrap.servers': 'localhost:9092,localhost:9094,localhost:9095',
         'security.protocol': 'SSL',

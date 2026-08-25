@@ -1,71 +1,101 @@
 # Kafka Fraud Sentinel
 
-This repository contains my university project for the Cloud Computing Technologies course at the University of Milan (UNIMI). It consists of a real-time fraud detection system designed to simulate a simple SOC (Security Operations Center). It monitors financial transactions to find anomalies, like amounts that are too high or too many transactions in a short time.
+This repository contains my university project for the Cloud Computing Technologies course at the University of Milan (UNIMI). It is a real-time fraud detection system that simulates a simple SOC (Security Operations Center). It monitors a stream of financial transactions looking for two types of anomalies: suspiciously high amounts and users making too many transactions in a short period of time (velocity fraud).
 
-The project meets all the course requirements: it is a distributed system with high availability (HA) and fault tolerance, and it uses security features like encryption and authentication.
+The project meets all the course requirements: the system is distributed with high availability and fault tolerance, and it enforces security with channel encryption and mutual authentication.
 
 ## Technologies used
 
-The main part of the system is an Apache Kafka cluster running in KRaft mode with 3 nodes to ensure fault tolerance. The logic is written in Python using the `confluent-kafka` library. It works as a microservice architecture: one service produces the data and another reads it, showing exactly why a message queue is needed for this specific task. The detected alerts are then saved in a `MongoDB` database.
+The core infrastructure is an Apache Kafka cluster running in **KRaft mode** with 3 nodes. The application logic is written in Python using the `confluent-kafka` library. Detected fraud alerts are stored in a `MongoDB` database.
 
-For the frontend, a web dashboard was built using `FastAPI` and `WebSockets` to send real-time updates to a simple `HTML`/`JS`/`CSS` page. To keep the system secure, **mutual TLS (mTLS)** is configured for all external clients: each service (producer, consumer, admin) presents its own certificate signed by an internal CA, and the broker enforces `ssl.client.auth=required`, rejecting any connection that does not provide a valid client certificate.
+Security is handled via **mutual TLS (mTLS)**: each service (producer, consumer, admin/dashboard) has its own certificate signed by an internal CA. The broker enforces `ssl.client.auth=required`, so any client without a valid certificate is rejected at the TLS handshake level. Access Control Lists (ACLs) further restrict what each principal can read or write.
+
+The frontend is a web dashboard built with `FastAPI`. It acts as a real Kafka consumer: a background thread subscribes to the `fraud-alerts` topic and pushes new alerts to the browser via **WebSockets** in real time. When a fraud alert is detected, the consumer also sends a **Telegram notification** to a configured bot.
+
+## Architecture
+
+The system uses two Kafka topics:
+
+- `transactions` — the main stream. The producer writes all financial transactions here.
+- `fraud-alerts` — the alert stream. The fraud-consumer reads from `transactions`, and when it detects something suspicious it writes an alert to this topic.
+
+There are two distinct consumer groups:
+
+- `fraud-detection-group` — the fraud-consumer, which does the actual detection.
+- `dashboard-group` — the dashboard backend, which reads from `fraud-alerts` independently to display real-time updates.
 
 ## Repository structure
 
 ```text
-├── security/              # TLS certificates, CA generation scripts, and broker credentials
+├── security/
+│   ├── generate-certs.sh      # generates CA and all client/broker certificates
+│   ├── setup-acls.sh          # configures Kafka ACLs (run once after startup)
+│   └── broker-N-creds/        # per-broker TLS credentials
 ├── services/
-│   ├── attacker/          # Scripts simulating security violations (plain text, bad credentials)
-│   ├── dashboard/         # FastAPI backend, WebSocket logic, and web interface
-│   ├── demo/              # Scripts demonstrating consumer group state recovery
-│   ├── fraud-consumer/    # Stream processing engine detecting fraud patterns
-│   └── producer/          # Transaction generator injecting synthetic data
-├── docker-compose.yml     # Multi-node Kafka cluster (KRaft) and MongoDB configuration
-└── requirements.txt       # Python dependencies
+│   ├── attacker/              # scripts simulating security violations (plaintext, wrong cert)
+│   ├── dashboard/             # FastAPI backend + WebSocket + web interface
+│   ├── demo/                  # script demonstrating consumer group offset recovery
+│   ├── fraud-consumer/        # reads from 'transactions', detects fraud, writes to 'fraud-alerts'
+│   ├── producer/              # generates and sends synthetic transactions at a normal pace
+│   └── stress-producer/       # sends a burst of transactions to trigger velocity fraud
+├── docker-compose.yml         # 3-node Kafka KRaft cluster + MongoDB
+└── requirements.txt
 ```
 
 ## How to run the project
 
-You only need Docker and Python installed on your system.
+You only need Docker and Python installed.
 
-1. Start the infrastructure
-Open a terminal in the project root and start the Kafka cluster and MongoDB using Docker Compose:
+**1. Start the infrastructure**
 
 ```bash
 docker-compose up -d
 ```
 
-2. Configure the ACL permissions (run once)
-Once the cluster is up, run this script to set the read/write permissions for the producer and consumer:
+**2. Configure ACL permissions** (run once, waits ~30 seconds for the cluster)
 
 ```bash
 bash security/setup-acls.sh
 ```
 
-3. Start the consumer
-Open a second terminal, activate your Python virtual environment, and run the backend script that processes the data:
+**3. (Optional) Configure Telegram notifications**
+
+Edit the `.env` file and fill in your bot credentials:
+
+```env
+TELEGRAM_BOT_TOKEN=your_token_here
+TELEGRAM_CHAT_ID=your_chat_id_here
+```
+
+If left empty, the consumer works normally without sending notifications.
+
+**4. Start the fraud consumer**
 
 ```bash
 python services/fraud-consumer/consumer.py
 ```
 
-4. Start the web dashboard
-Open a third terminal and run the FastAPI server:
+**5. Start the dashboard**
 
 ```bash
 uvicorn services.dashboard.main:app --reload --port 8000
 ```
 
-You can now access the dashboard by opening `http://localhost:8000` in your browser.
+Open `http://localhost:8000` in your browser.
 
-# Testing and simulation
+## Testing and demo
 
-Once the dashboard is open, you can test the system using the UI controls. Please note that to see the dashboard update dynamically, the consumer script must be running in the background as explained in step 2.
+The dashboard has three buttons:
 
-Clicking the "Inietta Transazioni" button will trigger the producer script (`services/producer/producer.py`) in the background. It will start injecting fake financial transactions into the Kafka topics, and you will see the dashboard update as the consumer detects the anomalies.
+- **Inietta Transazioni** — starts the normal producer, which sends transactions at a rate of ~1 per second. Some will randomly have high amounts and trigger `AMOUNT_FRAUD` alerts.
+- **Stress Test (Velocity)** — runs the stress producer, which sends 15 transactions for the same user in ~4 seconds, well above the threshold of 3 per 10 seconds. This triggers `VELOCITY_FRAUD` alerts.
+- **Test Audit/Auth** — runs a script that tries to connect to the cluster without a valid client certificate. The connection is rejected at the TLS handshake level, demonstrating that mTLS works correctly.
 
-To demonstrate robustness against security attacks, I included an audit feature. By clicking the "Test Audit/Auth" button, the backend will run a separate script (`services/attacker/attacker_wrong_auth.py`) that attempts to connect to the Kafka cluster without a valid client certificate. Since the cluster enforces mTLS, the connection is rejected at the TLS handshake level.
+**Fault tolerance demo:** to show that the cluster survives node failures, stop one broker while the producer is running and observe that messages continue to flow without interruption:
 
-During the demonstration, it is also possible to show fault tolerance and high availability by simulating node failures (e.g., stopping a Kafka container while the data is flowing) without interrupting the service.
-
-A complete description of the architectural choices, security configurations, and implementation details can be found in the final project report.
+```bash
+docker stop kafka-2
+# producer keeps running...
+docker start kafka-2
+# kafka-2 re-joins and catches up automatically
+```

@@ -14,7 +14,7 @@ def main():
     print("Tentativo di connessione in chiaro (PLAINTEXT) su porta SSL...")
 
     consumer = Consumer(get_insecure_config())
-    consumer.subscribe(['test-transazioni'])
+    consumer.subscribe(['transactions'])
 
     try:
         msg = consumer.poll(5.0)

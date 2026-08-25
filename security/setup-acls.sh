@@ -22,10 +22,10 @@ docker exec kafka-1 kafka-acls --bootstrap-server localhost:29092 \
   --add --allow-principal 'User:CN=consumer' \
   --producer --topic fraud-alerts 2>/dev/null
 
-# La dashboard usa il certificato admin per leggere dal topic fraud-alerts
-# con un consumer group separato (dashboard-group)
+# La dashboard si connette con il certificato admin (admin.crt), quindi il suo principal
+# e' CN=admin. Gli diamo i permessi per leggere da fraud-alerts con il suo consumer group.
 docker exec kafka-1 kafka-acls --bootstrap-server localhost:29092 \
-  --add --allow-principal 'User:CN=consumer' \
+  --add --allow-principal 'User:CN=admin' \
   --consumer --topic fraud-alerts \
   --group dashboard-group 2>/dev/null
 
