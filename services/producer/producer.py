@@ -61,33 +61,45 @@ def main():
     try:
         counter = 1
         while True:
-            tx = generate_mock_transaction()
+            # Con il 15% di probabilità, genero una "raffica" per simulare un velocity fraud naturale
+            is_velocity_burst = random.random() < 0.15
+
+            if is_velocity_burst:
+                burst_user = random.choice(users)
+                burst_size = random.randint(4, 6)
+                print(f"--> Inizio raffica di {burst_size} transazioni per {burst_user} (Velocity Fraud)...")
+                for _ in range(burst_size):
+                    tx = generate_mock_transaction()
+                    tx["user_id"] = burst_user  # Forza lo stesso utente
+                    tx["amount"] = round(random.uniform(5.0, 50.0), 2)  # Importi piccoli per non confondersi con amount fraud
+                    
+                    try:
+                        payload = json.dumps(tx)
+                    except (TypeError, ValueError) as e:
+                        continue
+
+                    producer.produce(topic=topic_name, key=tx["user_id"].encode('utf-8'), value=payload.encode('utf-8'), callback=delivery_report)
+                    producer.poll(0)
+                    print(f"  -> Inviata transazione #{counter}: {tx['user_id']} ha speso {tx['amount']} {tx['currency']}")
+                    counter += 1
+                    time.sleep(0.2) # Pausa minima tra le transazioni della raffica
+                print(f"--> Fine raffica per {burst_user}")
             
-            # Converto il dizionario in stringa JSON gestendo eventuali errori
-            try:
-                payload = json.dumps(tx)
-            except (TypeError, ValueError) as serialization_err:
-                print(f"Errore di serializzazione JSON: {serialization_err}")
-                continue
-            
-            # Uso user_id così le transazioni dello stesso utente 
-            # finiscono nella stessa partizione e mantengono l'ordine cronologico.
-            user_key = tx["user_id"].encode('utf-8')
-            
-            producer.produce(
-                topic=topic_name,
-                key=user_key,
-                value=payload.encode('utf-8'),
-                callback=delivery_report
-            )
-            
-            # Gestisco i callback in background
-            producer.poll(0)
-            
-            print(f"-> Inviata transazione #{counter}: {tx['user_id']} ha speso {tx['amount']} {tx['currency']} presso {tx['merchant']}")
-            counter += 1
-            
-            # Pausa tra una transazione e la successiva
+            else:
+                # Transazione singola normale (che può includere Amount Fraud)
+                tx = generate_mock_transaction()
+                try:
+                    payload = json.dumps(tx)
+                except (TypeError, ValueError) as e:
+                    continue
+                
+                producer.produce(topic=topic_name, key=tx["user_id"].encode('utf-8'), value=payload.encode('utf-8'), callback=delivery_report)
+                producer.poll(0)
+                
+                print(f"-> Inviata transazione #{counter}: {tx['user_id']} ha speso {tx['amount']} {tx['currency']} presso {tx['merchant']}")
+                counter += 1
+
+            # Pausa generale prima del prossimo blocco di transazioni
             time.sleep(random.uniform(1, 2))
             
     except KeyboardInterrupt:
