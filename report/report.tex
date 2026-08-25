@@ -29,7 +29,7 @@ This report presents Kafka Fraud Sentinel, a distributed, real-time fraud detect
 \newpage
 
 \section{Project Overview}
-For this Cloud Computing project was developed a distributed system that analyzes financial transactions in real time to catch potential frauds. 
+For this Cloud Computing project, a distributed system was developed that analyzes financial transactions in real time to catch potential frauds. 
 
 Instead of building a classic REST API where services talk directly to each other, an event-driven approach based on Apache Kafka was chosen. In a real-world bank, thousands of transactions happen every second. If the fraud detection engine experiences a temporary outage, the system cannot afford to lose the transactions or block users from making payments. Kafka acts as a durable buffer: producers simply send transactions to a topic, and consumers process them at their own pace.
 

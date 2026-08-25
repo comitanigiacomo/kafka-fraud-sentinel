@@ -52,25 +52,41 @@ There are two distinct consumer groups:
 
 You need Docker and Python 3 installed.
 
-**1. Start the infrastructure**
+**1. Configure the environment**
+
+Copy the `.env.example` file and generate a random `CLUSTER_ID` for Kafka KRaft:
+
+```bash
+cp .env.example .env
+sed -i "s/^CLUSTER_ID=.*/CLUSTER_ID=$(cat /proc/sys/kernel/random/uuid)/" .env
+```
+
+**2. Generate mTLS certificates**
+
+```bash
+bash security/generate-certs.sh
+```
+
+**3. Start the infrastructure**
 
 ```bash
 docker-compose up -d
 ```
+A web UI for monitoring the Kafka cluster (AKHQ) is available at `http://localhost:8080`.
 
-**2. Configure ACL permissions** (run once, waits ~30 seconds for the cluster to be ready)
+**4. Configure ACL permissions** (run once, waits ~30 seconds for the cluster to be ready)
 
 ```bash
 bash security/setup-acls.sh
 ```
 
-**3. Install Python dependencies**
+**5. Install Python dependencies**
 
 ```bash
 pip install -r requirements.txt
 ```
 
-**4. (Optional) Configure Telegram notifications**
+**6. (Optional) Configure Telegram notifications**
 
 Edit the `.env` file and fill in your bot credentials:
 
@@ -81,13 +97,13 @@ TELEGRAM_CHAT_ID=your_chat_id_here
 
 If left empty, the consumer works normally without sending notifications.
 
-**5. Start the fraud consumer**
+**7. Start the fraud consumer**
 
 ```bash
 python services/fraud-consumer/consumer.py
 ```
 
-**6. Start the dashboard**
+**8. Start the dashboard**
 
 ```bash
 uvicorn services.dashboard.main:app --reload --port 8000
