@@ -6,8 +6,6 @@ openssl genrsa -out ca.key 2048
 openssl req -x509 -new -nodes -key ca.key -sha256 -days 365 -out ca.pem -subj "/CN=SentinelCA"
 
 # Genera un certificato per ogni broker Kafka
-# Il SAN (Subject Alternative Name) serve per far riconoscere il broker
-# sia dal nome host interno Docker (kafka-N) che da localhost
 for i in 1 2 3; do
   mkdir -p broker-${i}-creds
 
@@ -16,7 +14,6 @@ for i in 1 2 3; do
     -out broker-${i}-creds/broker.csr \
     -subj "/CN=kafka-${i}"
 
-  # Firma il certificato aggiungendo i SAN direttamente come parametro
   echo "subjectAltName=DNS:kafka-${i},DNS:localhost" > san.ext
   openssl x509 -req \
     -in broker-${i}-creds/broker.csr \
@@ -25,7 +22,6 @@ for i in 1 2 3; do
     -days 365 -sha256 \
     -extfile san.ext
 
-  # Kafka con keystore PEM vuole certificato e chiave nello stesso file
   cat broker-${i}-creds/broker.crt broker-${i}-creds/broker.key > broker-${i}-creds/broker-keystore.pem
 
   cp ca.pem broker-${i}-creds/ca.pem

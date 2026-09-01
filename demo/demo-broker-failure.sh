@@ -2,11 +2,6 @@
 # Simula il crash di un broker mentre il cluster e' attivo.
 # Serve per dimostrare la fault tolerance: il sistema non si interrompe
 # anche se un nodo cade, e quando torna online si riallinea da solo.
-#
-# Come usarlo:
-#   1. avvia il producer e il consumer in altri due terminali
-#   2. lancia questo script
-#   3. osserva che il producer continua a inviare senza errori
 
 echo "=== Demo Fault Tolerance ==="
 echo ""
@@ -14,8 +9,6 @@ echo "Verifico che i 3 broker siano attivi..."
 docker ps --format "{{.Names}}" | grep kafka
 echo ""
 
-# Scelgo di stoppare kafka-2, che e' uno dei follower.
-# La demo funziona anche stoppando kafka-1 (il leader verra' rieletto).
 TARGET="kafka-2"
 
 echo "Fermo il broker $TARGET..."

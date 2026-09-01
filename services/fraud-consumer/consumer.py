@@ -39,7 +39,6 @@ def send_telegram_alert(message):
         print(f"Avviso: notifica Telegram non inviata ({e})")
 
 def get_ssl_base():
-    # metto le opzioni SSL comuni in una funzione separata cosi' non le riscrivo due volte
     return {
         'bootstrap.servers': 'localhost:9092,localhost:9094,localhost:9095',
         'security.protocol': 'SSL',
@@ -139,17 +138,15 @@ def main():
                 print(f"-> Transazione regolare per {user_id}.")
             else:
                 for alert_data in alerts_to_save:
-                    # Salvo l'alert su MongoDB come prima
+                    # Salva l'alert su MongoDB
                     alerts_collection.insert_one(alert_data)
                     print(f"Alert [{alert_data['type']}] salvato nel database MongoDB")
 
-                    # PyMongo inietta '_id' come oggetto non serializzabile.
-                    # Invece di cancellarlo, lo converto nel formato che la UI si aspetta.
                     alert_json = alert_data.copy()
                     if "_id" in alert_json:
                         alert_json["_id"] = {"$oid": str(alert_json["_id"])}
 
-                    # Pubblico anche l'alert sul topic fraud-alerts.
+                    # Pubblica anche l'alert sul topic fraud-alerts.
                     alert_producer.produce(
                         topic='fraud-alerts',
                         key=user_id.encode('utf-8'),
@@ -158,7 +155,6 @@ def main():
                     )
                     alert_producer.poll(0)
 
-                    # Mando notifica Telegram
                     if alert_data["type"] == "VELOCITY_FRAUD":
                         msg_text = (
                             f"🚨 *VELOCITY FRAUD*\n"

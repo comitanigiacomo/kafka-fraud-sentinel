@@ -6,11 +6,9 @@ from datetime import datetime, timezone
 from dotenv import load_dotenv
 from confluent_kafka import Producer
 
-# Carico il file .env dalla root del progetto trovando il percorso assoluto
 basedir = os.path.abspath(os.path.dirname(__file__))
 load_dotenv(os.path.join(basedir, '../../.env'))
 
-# Callback di Kafka: stampa se il messaggio è arrivato a destinazione o se c'è un errore
 def delivery_report(err, msg):
     if err is not None:
         print(f"Errore di invio transazione: {err}")
@@ -31,7 +29,6 @@ def get_kafka_config():
     }
 # Genera una transazione casuale, con un 15% di possibilità di avere un importo alto (sospetto)
 def generate_mock_transaction():
-    # Generiamo 100 utenti diversi (da user_100 a user_199) per avere piu' diversita'
     users = [f"user_{i}" for i in range(100, 200)]
     merchants = ["Amazon", "Supermarket Roma", "ATM Milano", "CryptoExchange", "Luxury Store", "Tech Shop"]
     
@@ -50,7 +47,6 @@ def generate_mock_transaction():
 def main():
     print("Avvio del servizio Producer (Simulatore Transazioni)...")
     
-    # Lista degli utenti per selezionare il target della raffica
     users = [f"user_{i}" for i in range(100, 200)]
     
     try:
@@ -85,7 +81,7 @@ def main():
                     producer.poll(0)
                     print(f"  -> Inviata transazione #{counter}: {tx['user_id']} ha speso {tx['amount']} {tx['currency']}")
                     counter += 1
-                    time.sleep(0.2) # Pausa minima tra le transazioni della raffica
+                    time.sleep(0.2)
                 print(f"--> Fine raffica per {burst_user}")
             
             else:
@@ -102,7 +98,6 @@ def main():
                 print(f"-> Inviata transazione #{counter}: {tx['user_id']} ha speso {tx['amount']} {tx['currency']} presso {tx['merchant']}")
                 counter += 1
 
-            # Pausa generale prima del prossimo blocco di transazioni
             time.sleep(random.uniform(1, 2))
             
     except KeyboardInterrupt:

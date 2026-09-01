@@ -40,9 +40,7 @@ def main():
         print(f"Errore di connessione: {e}")
         return
 
-    # L'utente che verra' segnalato come sospetto
     target_user = "user_101"
-    # Numero di transazioni da mandare in burst (ben oltre la soglia di 3 in 10 secondi)
     burst_count = 15
     merchants = ["Amazon", "CryptoExchange", "ATM Milano", "Luxury Store"]
 
@@ -67,7 +65,6 @@ def main():
         producer.poll(0)
         print(f"  [{i+1}/{burst_count}] {tx['amount']} EUR presso {tx['merchant']}")
 
-        # Pausa minima tra un messaggio e l'altro
         time.sleep(0.3)
 
     print("\nBurst completato. Svuoto la coda...")

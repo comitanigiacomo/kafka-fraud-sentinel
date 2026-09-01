@@ -127,7 +127,6 @@ async def websocket_alerts(websocket: WebSocket):
     await websocket.accept()
     connected_clients.append(websocket)
     try:
-        # Aspetto che il client mandi qualcosa (serve solo a tenere la connessione aperta)
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:

@@ -1,6 +1,4 @@
 #!/bin/bash
-# Configura i permessi ACL per producer, consumer e dashboard.
-# Esegui una sola volta dopo "docker compose up -d".
 
 echo "Aspetto che Kafka sia pronto..."
 sleep 30
@@ -23,15 +21,13 @@ docker exec kafka-1 kafka-acls --bootstrap-server localhost:29092 \
   --producer --topic fraud-alerts 2>/dev/null
 
 # La dashboard si connette con il certificato admin (admin.crt), quindi il suo principal
-# e' CN=admin. Gli diamo i permessi per leggere da fraud-alerts con il suo consumer group.
+# e' CN=admin. Gli servono i permessi per leggere da fraud-alerts con il suo consumer group.
 docker exec kafka-1 kafka-acls --bootstrap-server localhost:29092 \
   --add --allow-principal 'User:CN=admin' \
   --consumer --topic fraud-alerts \
   --group dashboard-group 2>/dev/null
 
 # Permessi per AKHQ (si connette senza certificato, quindi il suo principal e' ANONYMOUS).
-# Invece di renderlo super-user (che bypassa tutto), gli diamo solo
-# i permessi di lettura necessari per il monitoraggio del cluster.
 docker exec kafka-1 kafka-acls --bootstrap-server localhost:29092 \
   --add --allow-principal 'User:ANONYMOUS' \
   --operation Describe --operation DescribeConfigs \
