@@ -67,7 +67,7 @@ The codebase is divided into distinct Python microservices. Figure \ref{fig:arch
 \subsection{Data Generation (Producers)}
 To test the system, a \texttt{producer.py} script continuously generates mock transactions for 100 different users. It is programmed to mix normal traffic with fraudulent behavior:
 \begin{itemize}
-    \item About 30\% of the transactions have a very high amount (above 1000 EUR).
+    \item About 30\% of the transactions have a high amount (between 1000 and 8500 EUR). Those exceeding 5000 EUR are flagged as Amount Fraud by the consumer.
     \item About 15\% of the time, the producer picks a random user and sends a "burst" of 4 to 6 transactions in less than a second.
 \end{itemize}
 

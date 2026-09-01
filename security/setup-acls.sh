@@ -14,6 +14,13 @@ docker exec kafka-1 kafka-acls --bootstrap-server localhost:29092 \
   --consumer --topic transactions \
   --group fraud-detection-group 2>/dev/null
 
+# Permessi per il recovery demo: stesso principal del consumer, gruppo separato
+# per non interferire con il fraud-detection-group principale
+docker exec kafka-1 kafka-acls --bootstrap-server localhost:29092 \
+  --add --allow-principal 'User:CN=consumer' \
+  --consumer --topic transactions \
+  --group demo-recovery-group 2>/dev/null
+
 # Il consumer pubblica anche gli alert su fraud-alerts, quindi ha bisogno
 # anche dei permessi di scrittura su quel topic
 docker exec kafka-1 kafka-acls --bootstrap-server localhost:29092 \

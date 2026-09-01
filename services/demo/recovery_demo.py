@@ -7,15 +7,16 @@ from confluent_kafka import Consumer
 basedir = os.path.abspath(os.path.dirname(__file__))
 load_dotenv(os.path.join(basedir, '../../.env'))
 
-# Connessione mTLS con il certificato admin (firmato dalla stessa CA dei broker)
-# In questo modo si dimostra che qualsiasi client con un cert valido può connettersi.
+# Connessione mTLS con il certificato consumer (firmato dalla stessa CA dei broker).
+# Il principal CN=consumer ha i permessi ACL per leggere da 'transactions'
+# con il gruppo dedicato 'demo-recovery-group'.
 def get_recovery_config():
     return {
         'bootstrap.servers': 'localhost:9092,localhost:9094,localhost:9095',
         'security.protocol': 'SSL',
         'ssl.ca.location': os.path.join(basedir, '../../security/ca.pem'),
-        'ssl.certificate.location': os.path.join(basedir, '../../security/admin.crt'),
-        'ssl.key.location': os.path.join(basedir, '../../security/admin.key.pem'),
+        'ssl.certificate.location': os.path.join(basedir, '../../security/consumer.crt'),
+        'ssl.key.location': os.path.join(basedir, '../../security/consumer.key.pem'),
         'ssl.endpoint.identification.algorithm': 'none',
 
         'group.id': 'demo-recovery-group', # Identificativo univoco del gruppo
