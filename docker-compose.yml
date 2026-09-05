@@ -137,6 +137,64 @@ services:
       - kafka-2
       - kafka-3
 
+  producer:
+    build: ./services/producer
+    container_name: producer
+    profiles: ["app"]
+    network_mode: host
+    volumes:
+      - ./security:/app/security:ro
+      - ./.env:/app/.env:ro
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+    restart: on-failure
+
+  fraud-consumer:
+    build: ./services/fraud-consumer
+    container_name: fraud-consumer
+    profiles: ["app"]
+    network_mode: host
+    volumes:
+      - ./security:/app/security:ro
+      - ./.env:/app/.env:ro
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+      - mongodb
+    restart: on-failure
+
+  dashboard:
+    build: ./services/dashboard
+    container_name: dashboard
+    profiles: ["app"]
+    network_mode: host
+    volumes:
+      - ./security:/app/security:ro
+      - ./.env:/app/.env:ro
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+      - mongodb
+    restart: on-failure
+
+  stress-producer:
+    build: ./services/stress-producer
+    container_name: stress-producer
+    profiles: ["demo"]
+    network_mode: host
+    volumes:
+      - ./security:/app/security:ro
+      - ./.env:/app/.env:ro
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+    restart: "no"
+
 volumes:
   kafka_1_data:
   kafka_2_data:

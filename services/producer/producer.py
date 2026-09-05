@@ -27,12 +27,12 @@ def get_kafka_config():
         'acks': 'all',
         'retries': 3
     }
-# Genera una transazione casuale, con un 15% di possibilità di avere un importo alto (sospetto)
+# Genera una transazione casuale, con un 60% di possibilità di avere un importo alto (sospetto)
 def generate_mock_transaction():
     users = [f"user_{i}" for i in range(100, 200)]
     merchants = ["Amazon", "Supermarket Roma", "ATM Milano", "CryptoExchange", "Luxury Store", "Tech Shop"]
     
-    is_high_amount = random.random() < 0.30 
+    is_high_amount = random.random() < 0.60 
     
     transaction = {
         "transaction_id": f"tx_{random.randint(100000, 999999)}",
@@ -60,8 +60,8 @@ def main():
     try:
         counter = 1
         while True:
-            # Con il 15% di probabilità, genero una "raffica" per simulare un velocity fraud naturale
-            is_velocity_burst = random.random() < 0.15
+            # Con il 5% di probabilità, genero una "raffica" per simulare un velocity fraud naturale
+            is_velocity_burst = random.random() < 0.05
 
             if is_velocity_burst:
                 burst_user = random.choice(users)
