@@ -27,7 +27,7 @@ services:
       KAFKA_SSL_TRUSTSTORE_LOCATION: "/etc/kafka/secrets/ca.pem"
       KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: ""
       KAFKA_AUTHORIZER_CLASS_NAME: "org.apache.kafka.metadata.authorizer.StandardAuthorizer"
-      KAFKA_SUPER_USERS: "User:CN=admin;User:ANONYMOUS"
+      KAFKA_SUPER_USERS: "User:ANONYMOUS"
     volumes:
       - kafka_1_data:/var/lib/kafka/data
       - ./security/broker-1-creds:/etc/kafka/secrets:ro,Z
@@ -62,7 +62,7 @@ services:
       KAFKA_SSL_TRUSTSTORE_LOCATION: "/etc/kafka/secrets/ca.pem"
       KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: ""
       KAFKA_AUTHORIZER_CLASS_NAME: "org.apache.kafka.metadata.authorizer.StandardAuthorizer"
-      KAFKA_SUPER_USERS: "User:CN=admin;User:ANONYMOUS"
+      KAFKA_SUPER_USERS: "User:ANONYMOUS"
     volumes:
       - kafka_2_data:/var/lib/kafka/data
       - ./security/broker-2-creds:/etc/kafka/secrets:ro,Z
@@ -97,7 +97,7 @@ services:
       KAFKA_SSL_TRUSTSTORE_LOCATION: "/etc/kafka/secrets/ca.pem"
       KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: ""
       KAFKA_AUTHORIZER_CLASS_NAME: "org.apache.kafka.metadata.authorizer.StandardAuthorizer"
-      KAFKA_SUPER_USERS: "User:CN=admin;User:ANONYMOUS"
+      KAFKA_SUPER_USERS: "User:ANONYMOUS"
     volumes:
       - kafka_3_data:/var/lib/kafka/data
       - ./security/broker-3-creds:/etc/kafka/secrets:ro,Z
