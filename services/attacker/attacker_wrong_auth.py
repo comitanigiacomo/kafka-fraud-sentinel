@@ -12,13 +12,12 @@ def get_no_cert_config():
         'ssl.ca.location': os.path.join(basedir, '../../security/ca.pem'),
         'ssl.endpoint.identification.algorithm': 'none',
         'group.id': 'attacker-group',
-        'socket.timeout.ms': 5000,
-        'log_level': 0  # nasconde i log interni di rdkafka
+        'socket.timeout.ms': 5000
     }
 
 def main():
-    print("Tentativo di connessione senza certificato client...")
-
+    print("Tentativo di connessione TLS senza certificato client...")
+    
     consumer = Consumer(get_no_cert_config())
     consumer.subscribe(['transactions'])
 
@@ -26,9 +25,9 @@ def main():
         msg = consumer.poll(5.0)
 
         if msg is None:
-            print("Nessun messaggio ricevuto. Il broker ha rifiutato la connessione.")
+            print("Timeout (5s). Nessun messaggio ricevuto. Il cluster ha rifiutato la connessione TLS.")
         elif msg.error():
-            print(f"Il cluster ha bloccato l'attacco: {msg.error()}")
+            print(f"Errore restituito dal broker: {msg.error()}")
         else:
             print("Attacco riuscito, cluster vulnerabile!")
 
